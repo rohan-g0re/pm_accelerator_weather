@@ -1,6 +1,7 @@
 import base64
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote_plus
 
 import httpx
 from fastapi import Depends
@@ -24,11 +25,16 @@ class PlacesService:
                 NearbyPlacesCache.latitude == lat,
                 NearbyPlacesCache.longitude == lon,
                 NearbyPlacesCache.place_type == place_type
-            )
+            ).order_by(NearbyPlacesCache.created_at.desc())
             cache_record = self.db.scalars(cache_stmt).first()
             if cache_record:
-                if (datetime.now(timezone.utc) - cache_record.created_at).days < 7:
-                    return {"configured": True, "approximate": False, "results": cache_record.results, "message": None}
+                if (datetime.now(timezone.utc) - self._as_utc(cache_record.created_at)).days < 7:
+                    return {
+                        "configured": True,
+                        "approximate": False,
+                        "results": self._with_google_maps_urls(cache_record.results),
+                        "message": None,
+                    }
 
         if not self.settings.google_maps_api_key:
             return {
@@ -57,26 +63,59 @@ class PlacesService:
                 "results": [],
                 "message": "Nearby places are temporarily unavailable.",
             }
+        places_status = data.get("status")
+        if places_status not in {None, "OK", "ZERO_RESULTS"}:
+            return {
+                "configured": True,
+                "approximate": False,
+                "results": [],
+                "message": data.get("error_message") or f"Google Places returned {places_status}.",
+            }
         results = [
             {
                 "name": item.get("name"),
                 "rating": item.get("rating"),
                 "address": item.get("vicinity"),
                 "open_now": item.get("opening_hours", {}).get("open_now"),
+                "google_maps_url": self._google_maps_url(item),
             }
             for item in data.get("results", [])[:10]
         ]
         if self.db is not None:
-            cache_record = NearbyPlacesCache(
-                latitude=lat,
-                longitude=lon,
-                place_type=place_type,
-                results=results,
-            )
-            self.db.add(cache_record)
+            if cache_record:
+                cache_record.results = results
+                cache_record.created_at = datetime.now(timezone.utc)
+            else:
+                cache_record = NearbyPlacesCache(
+                    latitude=lat,
+                    longitude=lon,
+                    place_type=place_type,
+                    results=results,
+                )
+                self.db.add(cache_record)
             self.db.commit()
 
         return {"configured": True, "approximate": False, "results": results, "message": None}
+
+    def _as_utc(self, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+    def _google_maps_url(self, item: dict[str, Any]) -> str:
+        query = quote_plus(", ".join(part for part in [item.get("name"), item.get("vicinity") or item.get("address")] if part))
+        if item.get("place_id"):
+            return f"https://www.google.com/maps/search/?api=1&query={query}&query_place_id={item['place_id']}"
+        return f"https://www.google.com/maps/search/?api=1&query={query}"
+
+    def _with_google_maps_urls(self, results: Any) -> list[dict[str, Any]]:
+        if not isinstance(results, list):
+            return []
+        return [
+            {**item, "google_maps_url": item.get("google_maps_url") or self._google_maps_url(item)}
+            for item in results
+            if isinstance(item, dict)
+        ]
 
 
 class AiService:
@@ -88,7 +127,7 @@ class AiService:
             summary = (context or {}).get("summary") or "weather data"
             return {
                 "configured": False,
-                "answer": f"AI Q&A is not configured yet. Based on the available {summary}, check the forecast before planning.",
+                "answer": f"AI is not configured. Based on {summary}, check the forecast before planning.",
             }
         context = context or {}
         summary = context.get("summary") or "weather data"
@@ -106,7 +145,7 @@ class AiService:
                                 "content": (
                                     "You are a weather planning assistant. "
                                     f"Use this weather summary as core context for every answer: {summary}. "
-                                    "Keep answers concise and practical."
+                                    "Answer in fewer than 30 words. Be concise, practical, and directly answer the user."
                                 ),
                             },
                             {"role": "user", "content": f"Context: {context}\nQuestion: {question}"},

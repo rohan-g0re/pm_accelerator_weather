@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { fetchApi, getErrorMessage } from "@/lib/api";
-import { WeatherHistoryRead } from "@/lib/types";
-import { HistoryDetail } from "@/components/history/HistoryDetail";
+import { ForecastDay, ResolvedLocation, WeatherHistoryRead, WeatherSummary } from "@/lib/types";
+import { CurrentWeather } from "@/components/weather/CurrentWeather";
+import { WeatherInfoPanel } from "@/components/weather/WeatherInfoPanel";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Toast, ToastState } from "@/components/ui/Toast";
 import { format } from "date-fns";
+import { ArrowLeft, Download, FileText } from "lucide-react";
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<WeatherHistoryRead[]>([]);
@@ -21,6 +23,7 @@ export default function HistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [mobileDetailId, setMobileDetailId] = useState<number | null>(null);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -76,6 +79,7 @@ export default function HistoryPage() {
     try {
       await fetchApi(`/weather/history/${pendingDeleteId}`, { method: "DELETE" });
       if (selectedId === pendingDeleteId) setSelectedId(null);
+      if (mobileDetailId === pendingDeleteId) setMobileDetailId(null);
       setToast({ tone: "success", message: "Weather history record deleted." });
       setPendingDeleteId(null);
       loadHistory();
@@ -85,10 +89,84 @@ export default function HistoryPage() {
   };
 
   const selectedRecord = history.find(h => h.id === selectedId);
+  const mobileDetailRecord = history.find(h => h.id === mobileDetailId);
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+  const selectedForecast = selectedRecord ? extractForecastDays(selectedRecord.forecast) : [];
+  const mobileDetailForecast = mobileDetailRecord ? extractForecastDays(mobileDetailRecord.forecast) : [];
+
+  const renderSearchAndList = (openMobileDetail: boolean) => (
+    <div className="flex flex-col gap-6 min-w-0">
+      <h2 className="text-2xl font-semibold">Weather History</h2>
+      <p className="text-white/60 text-sm">Search locations & past data</p>
+
+      <form onSubmit={handleCreate} className="flex flex-col gap-4 bg-white/5 p-5 rounded-[24px]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(180px,1fr)_180px_180px_116px]">
+          <input
+            type="text"
+            placeholder="City or ZIP"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            className="min-w-0 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-[#D4FF00]"
+            required
+          />
+          <input
+            type="date"
+            value={startDate}
+            onChange={e => setStartDate(e.target.value)}
+            className="min-w-0 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#D4FF00]"
+            required
+          />
+          <input
+            type="date"
+            value={endDate}
+            onChange={e => setEndDate(e.target.value)}
+            className="min-w-0 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#D4FF00]"
+            required
+          />
+          <button
+            type="submit"
+            disabled={isCreating}
+            className="min-w-[116px] bg-[#D4FF00] text-black px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#bce600] transition-colors disabled:opacity-50"
+          >
+            {isCreating ? "Loading" : "Search"}
+          </button>
+        </div>
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+      </form>
+
+      <div className="flex flex-col gap-4 pb-4">
+        {isLoading ? (
+          <div className="animate-pulse h-24 bg-white/10 rounded-[20px] w-full"></div>
+        ) : history.length === 0 ? (
+          <p className="text-white/50 py-8 text-center">No history records found.</p>
+        ) : (
+          history.map((h) => (
+            <button
+              key={h.id}
+              onClick={() => {
+                setSelectedId(h.id);
+                if (openMobileDetail) setMobileDetailId(h.id);
+              }}
+              className={`text-left p-5 rounded-[20px] transition-all ${
+                selectedId === h.id ? "bg-white/20 ring-1 ring-[#D4FF00]" : "bg-white/5 hover:bg-white/10"
+              }`}
+            >
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-lg">{h.location_name}</span>
+                <span className="text-white/50 text-sm">
+                  {format(new Date(h.start_date), "MMM d")} - {format(new Date(h.end_date), "MMM d")}
+                </span>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto h-full">
-      <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 w-full h-full">
+    <>
       <Toast toast={toast} onClose={() => setToast(null)} />
       <ConfirmDialog
         open={pendingDeleteId !== null}
@@ -98,84 +176,166 @@ export default function HistoryPage() {
         onCancel={() => setPendingDeleteId(null)}
         onConfirm={confirmDelete}
       />
-      <div className="flex flex-col gap-6 min-w-0">
-        <h2 className="text-2xl font-semibold">Weather History</h2>
-        <p className="text-white/60 text-sm">Search locations & past data</p>
 
-        {/* Create Form */}
-        <form onSubmit={handleCreate} className="flex flex-col gap-4 bg-white/5 p-5 rounded-[24px]">
-          <div className="flex flex-col md:flex-row gap-4">
-            <input 
-              type="text" 
-              placeholder="City or ZIP" 
-              value={q} 
-              onChange={e => setQ(e.target.value)}
-              className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-[#D4FF00]"
-              required
-            />
-            <input 
-              type="date" 
-              value={startDate} 
-              onChange={e => setStartDate(e.target.value)}
-              className="bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#D4FF00]"
-              required
-            />
-            <input 
-              type="date" 
-              value={endDate} 
-              onChange={e => setEndDate(e.target.value)}
-              className="bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#D4FF00]"
-              required
-            />
-            <button 
-              type="submit" 
-              disabled={isCreating}
-              className="bg-[#D4FF00] text-black px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-[#bce600] transition-colors disabled:opacity-50"
-            >
-              {isCreating ? "Loading..." : "Search"}
-            </button>
-          </div>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-        </form>
+      <div className="lg:hidden">
+        {mobileDetailRecord ? (
+          <HistoryRecordDetail
+            record={mobileDetailRecord}
+            forecast={mobileDetailForecast}
+            apiBase={API_BASE}
+            onBack={() => setMobileDetailId(null)}
+            onDelete={handleDelete}
+          />
+        ) : (
+          renderSearchAndList(true)
+        )}
+      </div>
 
-        {/* History List */}
-        <div className="flex flex-col gap-4 overflow-y-auto pb-4">
-          {isLoading ? (
-            <div className="animate-pulse h-24 bg-white/10 rounded-[20px] w-full"></div>
-          ) : history.length === 0 ? (
-            <p className="text-white/50 py-8 text-center">No history records found.</p>
+      <div className="hidden max-w-[1400px] mx-auto lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] gap-8">
+        {renderSearchAndList(false)}
+        <div className="w-full min-w-0">
+          {selectedRecord ? (
+            <HistoryRecordDetail
+              record={selectedRecord}
+              forecast={selectedForecast}
+              apiBase={API_BASE}
+              onDelete={handleDelete}
+            />
           ) : (
-            history.map((h) => (
-              <button
-                key={h.id}
-                onClick={() => setSelectedId(h.id)}
-                className={`text-left p-5 rounded-[20px] transition-all ${
-                  selectedId === h.id ? "bg-white/20 ring-1 ring-[#D4FF00]" : "bg-white/5 hover:bg-white/10"
-                }`}
-              >
-                <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-lg">{h.location_name}</span>
-                  <span className="text-white/50 text-sm">
-                    {format(new Date(h.start_date), "MMM d")} - {format(new Date(h.end_date), "MMM d")}
-                  </span>
-                </div>
-              </button>
-            ))
+            <div className="h-full flex items-center justify-center text-white/50 py-20 rounded-[32px] bg-black/20">
+              Select a record to view details
+            </div>
           )}
         </div>
       </div>
+    </>
+  );
+}
 
-      {/* Right Panel */}
-      <div className="w-full bg-black/20 backdrop-blur-xl rounded-[32px] p-6 lg:p-8 lg:max-h-[calc(100vh-8rem)] overflow-y-auto">
-        {selectedRecord ? (
-          <HistoryDetail history={selectedRecord} onDelete={handleDelete} />
-        ) : (
-          <div className="h-full flex items-center justify-center text-white/50 py-20">
-            Select a record to view details
+function HistoryRecordDetail({
+  record,
+  forecast,
+  apiBase,
+  onDelete,
+  onBack,
+}: {
+  record: WeatherHistoryRead;
+  forecast: ForecastDay[];
+  apiBase: string;
+  onDelete: (id: number) => void;
+  onBack?: () => void;
+}) {
+  const location = historyLocation(record);
+
+  return (
+    <div className="flex flex-col gap-5">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex w-fit items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+      )}
+
+      <div className="rounded-[32px] bg-black/20 p-5 lg:p-8">
+        <div className="mb-5 flex items-start gap-4">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-2xl font-bold">{record.location_name}</h2>
+            <p className="text-white/60">
+              {format(new Date(record.start_date), "MMM d, yyyy")} - {format(new Date(record.end_date), "MMM d, yyyy")}
+            </p>
           </div>
-        )}
+          <button
+            onClick={() => onDelete(record.id)}
+            className="text-sm font-medium text-red-400 hover:text-red-300"
+          >
+            Delete
+          </button>
+        </div>
+
+        <section className="mb-6 rounded-[28px] border border-white/10 bg-black/20 p-5">
+          <CurrentWeather weather={historyWeather(record.current_weather)} location={location} />
+        </section>
+
+        <WeatherInfoPanel
+          key={record.id}
+          location={location}
+          tabs={["forecast", "nearby"]}
+          initialForecast={forecast}
+          initialSummary={record.summary}
+          className="bg-transparent p-0 backdrop-blur-none"
+        />
       </div>
+
+      <div className="flex gap-4">
+        <a
+          href={`${apiBase}/exports/history/${record.id}.csv`}
+          download
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 py-3 text-sm font-medium text-white transition-colors hover:bg-white/20"
+        >
+          <Download className="h-4 w-4" /> CSV
+        </a>
+        <a
+          href={`${apiBase}/exports/history/${record.id}.pdf`}
+          download
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#D4FF00] py-3 text-sm font-medium text-black transition-colors hover:bg-[#bce600]"
+        >
+          <FileText className="h-4 w-4" /> PDF
+        </a>
       </div>
     </div>
   );
+}
+
+function historyLocation(record: WeatherHistoryRead): ResolvedLocation {
+  return {
+    source_input: record.source_input,
+    location_name: record.location_name,
+    latitude: record.latitude,
+    longitude: record.longitude,
+    country: record.country ?? undefined,
+    state: record.state ?? undefined,
+  };
+}
+
+function historyWeather(currentWeather: Record<string, unknown>): WeatherSummary {
+  return {
+    temperature: numberOrUndefined(currentWeather.temperature),
+    feels_like: numberOrUndefined(currentWeather.feels_like),
+    condition: stringOrDefault(currentWeather.condition, "Weather"),
+    description: stringOrDefault(currentWeather.description, "stored weather"),
+    humidity: numberOrUndefined(currentWeather.humidity),
+    wind_speed: numberOrUndefined(currentWeather.wind_speed),
+    sunrise: stringOrUndefined(currentWeather.sunrise),
+    sunset: stringOrUndefined(currentWeather.sunset),
+    local_time: stringOrUndefined(currentWeather.local_time),
+    summary: stringOrDefault(currentWeather.summary, "Stored weather summary"),
+  };
+}
+
+function extractForecastDays(forecast: Record<string, unknown>): ForecastDay[] {
+  const days = forecast.days;
+  if (!Array.isArray(days)) return [];
+  return days.filter(isForecastDay);
+}
+
+function isForecastDay(value: unknown): value is ForecastDay {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Partial<ForecastDay>;
+  return typeof item.date === "string" && typeof item.condition === "string" && typeof item.description === "string";
+}
+
+function numberOrUndefined(value: unknown): number | undefined {
+  return typeof value === "number" ? value : undefined;
+}
+
+function stringOrUndefined(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function stringOrDefault(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim() ? value : fallback;
 }

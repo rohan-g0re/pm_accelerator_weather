@@ -109,6 +109,7 @@ export interface NearbyPlace {
   rating?: number;
   address?: string;
   open_now?: boolean;
+  google_maps_url?: string;
 }
 
 export interface NearbyPlacesResponse {

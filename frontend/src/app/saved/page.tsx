@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchApi, getErrorMessage } from "@/lib/api";
 import { SavedLocationRead } from "@/lib/types";
-import { NearbyPlaces } from "@/components/saved/NearbyPlaces";
+import { LocationWeatherDetail } from "@/components/weather/LocationWeatherDetail";
+import { WeatherInfoPanel } from "@/components/weather/WeatherInfoPanel";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Toast, ToastState } from "@/components/ui/Toast";
 import { CloudSun, Edit2, Trash2, MapPin } from "lucide-react";
@@ -17,6 +18,7 @@ export default function SavedLocationsPage() {
   const [editTag, setEditTag] = useState("");
   const [toast, setToast] = useState<ToastState | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [mobileDetailId, setMobileDetailId] = useState<number | null>(null);
   const router = useRouter();
 
   const loadLocations = useCallback(async () => {
@@ -49,6 +51,7 @@ export default function SavedLocationsPage() {
     try {
       await fetchApi(`/saved-locations/${pendingDeleteId}`, { method: "DELETE" });
       if (selectedId === pendingDeleteId) setSelectedId(null);
+      if (mobileDetailId === pendingDeleteId) setMobileDetailId(null);
       setToast({ tone: "success", message: "Saved location removed." });
       setPendingDeleteId(null);
       loadLocations();
@@ -78,9 +81,80 @@ export default function SavedLocationsPage() {
   };
 
   const selectedLoc = locations.find(l => l.id === selectedId);
+  const mobileDetailLoc = locations.find(l => l.id === mobileDetailId);
+
+  const renderLocationList = (openMobileDetail: boolean) => (
+    <div className="flex flex-col gap-4">
+      {isLoading ? (
+        <div className="animate-pulse h-24 bg-white/10 rounded-2xl w-full"></div>
+      ) : locations.length === 0 ? (
+        <p className="text-white/50 py-8 text-center">No saved locations found.</p>
+      ) : (
+        locations.map((loc) => (
+          <div
+            key={loc.id}
+            onClick={() => {
+              setSelectedId(loc.id);
+              if (openMobileDetail) setMobileDetailId(loc.id);
+            }}
+            className={`flex flex-col gap-3 p-5 rounded-[24px] cursor-pointer transition-all ${
+              selectedId === loc.id ? "bg-white/20 ring-1 ring-[#D4FF00]" : "bg-white/5 hover:bg-white/10"
+            }`}
+          >
+            <div className="flex justify-between items-start">
+              {editingId === loc.id ? (
+                <form onSubmit={(e) => handleEditSave(loc.id, e)} onClick={(e) => e.stopPropagation()} className="flex gap-2 w-full max-w-sm">
+                  <input
+                    type="text"
+                    value={editTag}
+                    onChange={e => setEditTag(e.target.value)}
+                    className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-sm text-white focus:outline-none focus:border-[#D4FF00]"
+                    autoFocus
+                  />
+                  <button type="submit" className="text-xs bg-[#D4FF00] text-black px-3 py-1 rounded-lg font-medium hover:bg-[#bce600]">Save</button>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-lg font-medium">Cancel</button>
+                </form>
+              ) : (
+                <>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[#D4FF00] text-lg">{loc.tag}</span>
+                    <div className="flex items-center gap-1 text-white/80 mt-1">
+                      <MapPin className="w-3 h-3" />
+                      <span className="text-sm">{loc.location_name} {loc.country ? `, ${loc.country}` : ""}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigateToWeather(loc); }}
+                      className="p-2 bg-white/10 hover:bg-[#D4FF00]/20 hover:text-[#D4FF00] rounded-full transition-colors text-white/70"
+                      title="View weather"
+                    >
+                      <CloudSun className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditTag(loc.tag); setEditingId(loc.id); }}
+                      className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white/70"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(loc.id, e)}
+                      className="p-2 bg-white/10 hover:bg-red-500/20 hover:text-red-400 rounded-full transition-colors text-white/70"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 w-full h-full">
+    <>
       <Toast toast={toast} onClose={() => setToast(null)} />
       <ConfirmDialog
         open={pendingDeleteId !== null}
@@ -90,86 +164,36 @@ export default function SavedLocationsPage() {
         onCancel={() => setPendingDeleteId(null)}
         onConfirm={confirmDelete}
       />
-      <div className="flex-1 flex flex-col gap-6">
-        <h2 className="text-2xl font-semibold">Saved Locations</h2>
-        <p className="text-white/60 text-sm">Manage your library and tags</p>
 
-        <div className="flex flex-col gap-4 overflow-y-auto">
-          {isLoading ? (
-            <div className="animate-pulse h-24 bg-white/10 rounded-2xl w-full"></div>
-          ) : locations.length === 0 ? (
-            <p className="text-white/50 py-8 text-center">No saved locations found.</p>
-          ) : (
-            locations.map((loc) => (
-              <div
-                key={loc.id}
-                onClick={() => setSelectedId(loc.id)}
-                className={`flex flex-col gap-3 p-5 rounded-[24px] cursor-pointer transition-all ${
-                  selectedId === loc.id ? "bg-white/20 ring-1 ring-[#D4FF00]" : "bg-white/5 hover:bg-white/10"
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  {editingId === loc.id ? (
-                    <form onSubmit={(e) => handleEditSave(loc.id, e)} className="flex gap-2 w-full max-w-sm">
-                      <input 
-                        type="text" 
-                        value={editTag} 
-                        onChange={e => setEditTag(e.target.value)}
-                        className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-sm text-white focus:outline-none focus:border-[#D4FF00]"
-                        autoFocus
-                      />
-                      <button type="submit" className="text-xs bg-[#D4FF00] text-black px-3 py-1 rounded-lg font-medium hover:bg-[#bce600]">Save</button>
-                      <button type="button" onClick={() => setEditingId(null)} className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-lg font-medium">Cancel</button>
-                    </form>
-                  ) : (
-                    <>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[#D4FF00] text-lg">{loc.tag}</span>
-                        <div className="flex items-center gap-1 text-white/80 mt-1">
-                          <MapPin className="w-3 h-3" />
-                          <span className="text-sm">{loc.location_name} {loc.country ? `, ${loc.country}` : ""}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigateToWeather(loc); }}
-                          className="p-2 bg-white/10 hover:bg-[#D4FF00]/20 hover:text-[#D4FF00] rounded-full transition-colors text-white/70"
-                          title="View weather"
-                        >
-                          <CloudSun className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setEditTag(loc.tag); setEditingId(loc.id); }}
-                          className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white/70"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={(e) => handleDelete(loc.id, e)}
-                          className="p-2 bg-white/10 hover:bg-red-500/20 hover:text-red-400 rounded-full transition-colors text-white/70"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Right Panel */}
-      <div className="w-full lg:w-[360px] bg-black/20 backdrop-blur-xl rounded-[32px] p-6 lg:p-8 shrink-0 h-fit">
-        {selectedLoc ? (
-          <NearbyPlaces location={selectedLoc} />
+      <div className="lg:hidden">
+        {mobileDetailLoc ? (
+          <LocationWeatherDetail location={mobileDetailLoc} onBack={() => setMobileDetailId(null)} />
         ) : (
-          <div className="h-full flex items-center justify-center text-white/50 py-20">
-            Select a location to explore nearby places
+          <div className="flex flex-col gap-6">
+            <h2 className="text-2xl font-semibold">Saved Locations</h2>
+            <p className="text-white/60 text-sm">Manage your library and tags</p>
+            {renderLocationList(true)}
           </div>
         )}
       </div>
-    </div>
+
+      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] gap-8">
+        <div className="min-w-0 flex flex-col gap-6">
+          <h2 className="text-2xl font-semibold">Saved Locations</h2>
+          <p className="text-white/60 text-sm">Manage your library and tags</p>
+          {renderLocationList(false)}
+        </div>
+
+        <div className="w-full min-w-0">
+          {selectedLoc ? (
+            <WeatherInfoPanel key={selectedLoc.id} location={selectedLoc} />
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-[32px] bg-black/20 py-20 text-white/50">
+              Select a location to explore nearby places
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
