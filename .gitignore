@@ -1,0 +1,177 @@
+# =============================================================================
+# Operating system
+# =============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# =============================================================================
+# Editors & IDEs
+# =============================================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-*
+
+# =============================================================================
+# Environment & secrets (keep *.example committed)
+# =============================================================================
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+secrets.json
+credentials.json
+*.key
+
+# =============================================================================
+# Python (FastAPI / uvicorn / pytest / Alembic / SQLAlchemy)
+# =============================================================================
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+.venv/
+venv/
+ENV/
+env/
+.envrc
+
+# Test & type checkers
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+cover/
+junit.xml
+pytestdebug.log
+
+# Optional local tool dirs
+.uv/
+
+# =============================================================================
+# Node / Next.js / TypeScript
+# =============================================================================
+**/node_modules/
+**/.next/
+**/out/
+**/dist/
+**/build/
+**/.turbo/
+**/.vercel/output/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs & debug
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# Package managers
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# ESLint
+.eslintcache
+
+# Playwright / e2e (if added later)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# =============================================================================
+# Databases & local data
+# =============================================================================
+*.sqlite
+*.sqlite3
+*.db
+backend/weather.db
+backend/*.db
+
+# =============================================================================
+# Deploy & cloud (optional local config)
+# =============================================================================
+.vercel/
+.railway/
+.render/
+
+# =============================================================================
+# Design / tooling artifacts (project-specific)
+# =============================================================================
+frontend/temp_pen/
+frontend/temp_frontend/
+*.pen.autosave
+
+# Generated exports & temp downloads (API features)
+*.pdf.tmp
+**/exports_temp/
+
+# =============================================================================
+# Misc
+# =============================================================================
+*.local
+.cache/
+.env
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+cover/
+junit.xml
+.venv/
+venv/
