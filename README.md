@@ -5,10 +5,10 @@ Full-stack weather application with live weather, saved locations, history, AI Q
 
 ## Demo
 
-Click the screenshot below to open the demo video, or use this link: [Demo video link](https://example.com/demo-video-placeholder).
+Click the screenshot below to open the demo video, or use this link: [Demo video link](https://drive.google.com/file/d/1_ujv-LjAZKo13IdwO8mwAGEIesqTToB9/view?usp=sharing).
 
 <p align="center">
-  <a href="https://example.com/demo-video-placeholder" title="Watch the demo video">
+  <a href="https://drive.google.com/file/d/1_ujv-LjAZKo13IdwO8mwAGEIesqTToB9/view?usp=sharing" title="Watch the demo video">
     <img src="docs/image.png" alt="Weather Forecast dashboard — click to watch the demo video" width="900" />
   </a>
 </p>
@@ -39,6 +39,12 @@ Click the screenshot below to open the demo video, or use this link: [Demo video
 - Backend: FastAPI with SQLAlchemy.
 - Databases: SQLite for local DB, PostgreSQL for production DB.
 - APIs: OpenWeatherMap, Mapillary, NanoBanana/Gemini, DeepSeek, Google Maps Places.
+
+## Deployment
+
+1. Frontend: Vercel
+2. Backend Server: Render
+3. Backend PostgreSQL Database: Render
 
 ## Requirements
 
