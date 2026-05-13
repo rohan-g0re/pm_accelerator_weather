@@ -10,7 +10,7 @@ from app.repositories.saved_locations import (
     delete_saved_location,
     get_saved_location,
     list_saved_locations,
-    update_saved_location_tag,
+    update_saved_location,
 )
 from app.schemas.common import SavedLocationCreate, SavedLocationRead, SavedLocationUpdate
 from app.services.location_service import LocationService, get_location_service
@@ -33,6 +33,7 @@ def create_location(
         latitude=location.latitude,
         longitude=location.longitude,
         tag=payload.tag,
+        generated_image_url=payload.generated_image_url,
     )
     return create_saved_location(db, saved_location)
 
@@ -55,7 +56,12 @@ def patch_location(
     saved_location = get_saved_location(db, location_id)
     if saved_location is None:
         raise AppError("RECORD_NOT_FOUND", "Saved location was not found.", status.HTTP_404_NOT_FOUND)
-    return update_saved_location_tag(db, saved_location, payload.tag)
+    return update_saved_location(
+        db,
+        saved_location,
+        tag=payload.tag,
+        generated_image_url=payload.generated_image_url,
+    )
 
 
 @router.delete("/{location_id}", status_code=status.HTTP_204_NO_CONTENT)

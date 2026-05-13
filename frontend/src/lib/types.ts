@@ -100,6 +100,7 @@ export interface SavedLocationRead {
   latitude: number;
   longitude: number;
   tag: string;
+  generated_image_url?: string | null;
   created_at: string;
   updated_at: string;
 }

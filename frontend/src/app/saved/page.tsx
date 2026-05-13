@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchApi, getErrorMessage } from "@/lib/api";
 import { SavedLocationRead } from "@/lib/types";
 import { LocationWeatherDetail } from "@/components/weather/LocationWeatherDetail";
-import { WeatherInfoPanel } from "@/components/weather/WeatherInfoPanel";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Toast, ToastState } from "@/components/ui/Toast";
 import { CloudSun, Edit2, Trash2, MapPin } from "lucide-react";
@@ -80,10 +79,9 @@ export default function SavedLocationsPage() {
     router.push(`/?${params.toString()}`);
   };
 
-  const selectedLoc = locations.find(l => l.id === selectedId);
-  const mobileDetailLoc = locations.find(l => l.id === mobileDetailId);
+  const detailLoc = locations.find(l => l.id === mobileDetailId);
 
-  const renderLocationList = (openMobileDetail: boolean) => (
+  const renderLocationList = () => (
     <div className="flex flex-col gap-4">
       {isLoading ? (
         <div className="animate-pulse h-24 bg-white/10 rounded-2xl w-full"></div>
@@ -95,7 +93,7 @@ export default function SavedLocationsPage() {
             key={loc.id}
             onClick={() => {
               setSelectedId(loc.id);
-              if (openMobileDetail) setMobileDetailId(loc.id);
+              setMobileDetailId(loc.id);
             }}
             className={`flex flex-col gap-3 p-5 rounded-[24px] cursor-pointer transition-all ${
               selectedId === loc.id ? "bg-white/20 ring-1 ring-[#D4FF00]" : "bg-white/5 hover:bg-white/10"
@@ -165,35 +163,26 @@ export default function SavedLocationsPage() {
         onConfirm={confirmDelete}
       />
 
-      <div className="lg:hidden">
-        {mobileDetailLoc ? (
-          <LocationWeatherDetail location={mobileDetailLoc} onBack={() => setMobileDetailId(null)} />
-        ) : (
-          <div className="flex flex-col gap-6">
-            <h2 className="text-2xl font-semibold">Saved Locations</h2>
-            <p className="text-white/60 text-sm">Manage your library and tags</p>
-            {renderLocationList(true)}
-          </div>
-        )}
-      </div>
-
-      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] gap-8">
-        <div className="min-w-0 flex flex-col gap-6">
+      {detailLoc ? (
+        <LocationWeatherDetail
+          key={detailLoc.id}
+          location={detailLoc}
+          onBack={() => setMobileDetailId(null)}
+          onBackgroundSaved={(generatedImageUrl) => {
+            setLocations((current) =>
+              current.map((loc) =>
+                loc.id === detailLoc.id ? { ...loc, generated_image_url: generatedImageUrl } : loc
+              )
+            );
+          }}
+        />
+      ) : (
+        <div className="flex flex-col gap-6">
           <h2 className="text-2xl font-semibold">Saved Locations</h2>
           <p className="text-white/60 text-sm">Manage your library and tags</p>
-          {renderLocationList(false)}
+          {renderLocationList()}
         </div>
-
-        <div className="w-full min-w-0">
-          {selectedLoc ? (
-            <WeatherInfoPanel key={selectedLoc.id} location={selectedLoc} />
-          ) : (
-            <div className="flex h-full items-center justify-center rounded-[32px] bg-black/20 py-20 text-white/50">
-              Select a location to explore nearby places
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </>
   );
 }

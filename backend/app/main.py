@@ -4,10 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import ai, exports, health, images, places, saved_locations, weather
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
+from app.db.schema_compat import ensure_saved_locations_schema
+from app.db.session import engine
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    ensure_saved_locations_schema(engine)
     app = FastAPI(title=settings.app_name)
     app.add_middleware(
         CORSMiddleware,

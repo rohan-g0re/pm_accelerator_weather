@@ -174,6 +174,7 @@ class WeatherHistoryRead(BaseModel):
 
 class SavedLocationCreate(LocationQuery):
     tag: str = Field(min_length=3, max_length=40)
+    generated_image_url: str | None = None
 
     @field_validator("tag")
     @classmethod
@@ -187,11 +188,14 @@ class SavedLocationCreate(LocationQuery):
 
 
 class SavedLocationUpdate(BaseModel):
-    tag: str = Field(min_length=3, max_length=40)
+    tag: str | None = Field(default=None, min_length=3, max_length=40)
+    generated_image_url: str | None = None
 
     @field_validator("tag")
     @classmethod
-    def validate_tag(cls, value: str) -> str:
+    def validate_tag(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         return SavedLocationCreate.validate_tag(value)
 
 
@@ -206,6 +210,7 @@ class SavedLocationRead(BaseModel):
     latitude: float
     longitude: float
     tag: str
+    generated_image_url: str | None = None
     created_at: datetime
     updated_at: datetime
 

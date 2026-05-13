@@ -24,43 +24,23 @@ class ExportService:
         writer = csv.writer(output)
         writer.writerow(
             [
-                "location",
-                "start_date",
-                "end_date",
+                "date",
                 "temperature",
                 "condition",
                 "description",
                 "humidity",
                 "wind_speed",
-                "summary",
             ]
         )
-        weather = history.current_weather or {}
-        writer.writerow(
-            [
-                history.location_name,
-                history.start_date.isoformat(),
-                history.end_date.isoformat(),
-                weather.get("temperature"),
-                weather.get("condition"),
-                weather.get("description"),
-                weather.get("humidity"),
-                weather.get("wind_speed"),
-                history.summary,
-            ]
-        )
-        for day in self._forecast_days(history.forecast):
+        for day in self._csv_days(history):
             writer.writerow(
                 [
-                    history.location_name,
                     day.get("date"),
-                    day.get("date"),
-                    f"{day.get('low')} - {day.get('high')}",
+                    self._temperature_value(day),
                     day.get("condition"),
                     day.get("description"),
-                    "",
-                    "",
-                    "5-day forecast",
+                    day.get("humidity", ""),
+                    day.get("wind_speed", ""),
                 ]
             )
         
@@ -159,6 +139,23 @@ class ExportService:
     def _forecast_days(self, forecast: dict[str, Any]) -> list[dict[str, Any]]:
         days = forecast.get("days", []) if isinstance(forecast, dict) else []
         return days if isinstance(days, list) else []
+
+    def _csv_days(self, history: WeatherHistory) -> list[dict[str, Any]]:
+        date_range_days = self._forecast_days(history.date_range_weather)
+        if date_range_days:
+            return date_range_days
+        return self._forecast_days(history.forecast)
+
+    def _temperature_value(self, day: dict[str, Any]) -> Any:
+        if day.get("temperature") is not None:
+            return day.get("temperature")
+        low = day.get("low")
+        high = day.get("high")
+        if low is not None and high is not None:
+            return f"{low} - {high}"
+        if high is not None:
+            return high
+        return low if low is not None else ""
 
 
 def get_export_service(db: Session = Depends(get_db)) -> ExportService:

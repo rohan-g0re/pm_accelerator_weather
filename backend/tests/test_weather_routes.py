@@ -100,7 +100,11 @@ def test_exports_return_csv_and_pdf(client):
     csv_response = client.get(f"/exports/history/{history_id}.csv")
     assert csv_response.status_code == 200
     assert csv_response.headers["content-type"].startswith("text/csv")
-    assert "location,start_date,end_date" in csv_response.text
+    assert csv_response.text.splitlines()[0] == "date,temperature,condition,description,humidity,wind_speed"
+    assert "start_date" not in csv_response.text
+    assert "end_date" not in csv_response.text
+    assert "summary" not in csv_response.text
+    assert "2026-05-09,17.0 - 23.0,Clouds,scattered clouds,," in csv_response.text
 
     pdf_response = client.get(f"/exports/history/{history_id}.pdf")
     assert pdf_response.status_code == 200

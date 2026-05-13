@@ -1,44 +1,84 @@
-# AI Engineer Intern - Technical Assessment (Weather App)
+# Weather App
 
-Built by Rohan.
+Full-stack weather application with live weather, saved locations, history, AI Q&A, generated visual backgrounds, nearby places, and responsive web/mobile UI.
 
-**Product Manager Accelerator:** Helping professionals transition into Product Management and land their dream jobs at top tech companies through a community-driven, mentorship-based program.
+## Demo
 
-## Overview
-This full-stack Weather Application provides users with real-time weather conditions, 5-day forecasts, history tracking, location saving, and AI-powered insights.
-
-## Tech Stack
-- **Frontend**: Next.js (App Router), Tailwind CSS, Lucide React, TypeScript
-- **Backend**: FastAPI, Python 3.13, PostgreSQL, SQLAlchemy, Alembic
-- **Integrations**: 
-  - OpenWeather API (One Call 3.0, Geocoding)
-  - Google Maps Places API (Nearby Search)
-  - Mapillary API (Street imagery)
-  - DeepSeek API (Weather Q&A)
-  - Gemini/Nanobanana (AI generated Clipart)
+[Demo video link](https://example.com/demo-video-placeholder)
 
 ## Features
-- **Search Weather**: By city, ZIP code, coordinates, or browser geolocation.
-- **5-Day Forecast**: View highs, lows, conditions, and precipitation chances.
-- **Weather History**: Save weather reports for date ranges. Ask AI questions about historical weather. Export records to CSV or PDF.
-- **Saved Locations**: Build a library of locations with custom editable tags. Explore nearby restaurants and hotels.
-- **Responsive UI**: Built for desktop, tablet, and mobile with glassmorphic styling and dynamic backgrounds based on the time and weather.
-- **Error Handling**: Graceful handling of location not found, API failures, geolocation denials, and invalid dates.
 
-## Setup Instructions
+### Backend
 
-### Backend Setup
-1. `cd backend`
-2. Install dependencies: `pip install -r requirements.txt` (or via `uv`)
-3. Create `.env` based on `.env.example` and add your API keys (OpenWeather, Google Maps, DeepSeek, Gemini) and `DATABASE_URL`.
-4. Run migrations: `alembic upgrade head`
-5. Start server: `fastapi dev app/main.py` (Runs on `http://localhost:8000`)
+- OpenWeatherMap One Call API 3.0 for current weather, forecasts, time machine data, and overview.
+- **Mapillary street images lookup** using the latitude/longitude resolved from OpenWeather.
+- **NanoBanana image generation** using Mapillary images to create weather background images.
+- **DeepSeek Q&A** over forecast context; each question sends the forecast in the system prompt.
+- **Google Maps Places API** for nearby restaurants and hotels.
+- **SQLite for development and PostgreSQL for production**, controlled through environment variables.
+- CRUD support for saved locations, including updating saved-location names/tags.
 
-### Frontend Setup
-1. `cd frontend`
-2. Install dependencies: `npm install`
-3. Create `.env.local` and add `NEXT_PUBLIC_API_URL=http://localhost:8000`
-4. Start server: `npm run dev` (Runs on `http://localhost:3000`)
+### Frontend
 
-## Demo Video
-*(Please record a 1-2 minute demo video showing CRUD, exports, AI features, and an error case, then paste the URL here)*
+- Responsive Next.js UI for desktop and mobile.
+- Consistent themed interface across weather, saved locations, and history.
+- Dynamic visual theme based on weather/time context.
+- Minimal, utility-oriented UI focused on weather actions and saved data.
+
+## Tech Stack
+
+- Frontend: Next.js, TypeScript.
+- Backend: FastAPI with SQLAlchemy.
+- Databases: SQLite for local DB, PostgreSQL for production DB.
+- APIs: OpenWeatherMap, Mapillary, NanoBanana/Gemini, DeepSeek, Google Maps Places.
+
+## Requirements
+
+- Backend dependencies are listed in `backend/requirements.txt`.
+- Frontend dependencies are listed in `frontend/package.json`.
+- Python `3.13+` is recommended.
+- Node.js compatible with the installed Next.js version is required.
+
+
+# Backend Setup
+
+## Environment Variables
+
+Create `backend/.env` with the required keys:
+
+```env
+DATABASE_URL=sqlite:///./weather.db
+OPENWEATHER_API_KEY=your_openweather_key
+GOOGLE_MAPS_API_KEY=your_google_maps_key
+MAPILLARY_TOKEN=your_mapillary_token
+DEEPSEEK_API_KEY=your_deepseek_key
+NANOBANANA_API_KEY=your_nanobanana_key
+CORS_ORIGINS=http://localhost:3000
+```
+
+For production, set `DATABASE_URL` to the PostgreSQL connection string and `ENVIRONMENT` to production.
+
+## Run Locally
+
+```bash
+cd backend
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+Backend runs at `http://localhost:8000`.
+
+# Frontend Setup
+
+## Run locally
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs at `http://localhost:3000`.

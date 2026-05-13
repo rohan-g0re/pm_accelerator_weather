@@ -11,6 +11,13 @@ def test_saved_location_crud(client):
     assert patch_response.status_code == 200
     assert patch_response.json()["tag"] == "trip_home"
 
+    image_response = client.patch(
+        f"/saved-locations/{location_id}",
+        json={"generated_image_url": "data:image/png;base64,abc123"},
+    )
+    assert image_response.status_code == 200
+    assert image_response.json()["generated_image_url"] == "data:image/png;base64,abc123"
+
     delete_response = client.delete(f"/saved-locations/{location_id}")
     assert delete_response.status_code == 204
 

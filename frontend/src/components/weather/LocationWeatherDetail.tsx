@@ -1,26 +1,51 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { CurrentWeather } from "@/components/weather/CurrentWeather";
-import { HourlyTimeline } from "@/components/weather/HourlyTimeline";
-import { WeatherInfoPanel } from "@/components/weather/WeatherInfoPanel";
+import { WeatherDashboardView } from "@/components/weather/WeatherDashboardView";
 import { fetchApi, getErrorMessage } from "@/lib/api";
-import { OneCallWeatherResponse, ResolvedLocation } from "@/lib/types";
+import { OneCallWeatherResponse, ResolvedLocation, WeatherBackgroundResponse } from "@/lib/types";
 
 interface LocationWeatherDetailProps {
   location: Pick<ResolvedLocation, "location_name" | "latitude" | "longitude" | "source_input"> & {
+    id?: number;
     country?: string | null;
     state?: string | null;
+    generated_image_url?: string | null;
   };
   onBack?: () => void;
+  onBackgroundSaved?: (generatedImageUrl: string) => void;
 }
 
-export function LocationWeatherDetail({ location, onBack }: LocationWeatherDetailProps) {
+export function LocationWeatherDetail({ location, onBack, onBackgroundSaved }: LocationWeatherDetailProps) {
   const [data, setData] = useState<OneCallWeatherResponse | null>(null);
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(location.generated_image_url ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const requestIdRef = useRef(0);
+
+  const generateAndCacheBackground = useCallback(async (weatherData: OneCallWeatherResponse, requestId: number) => {
+    try {
+      const result = await fetchApi<WeatherBackgroundResponse>("/images/weather-background", {
+        method: "POST",
+        body: JSON.stringify({
+          location: weatherData.location,
+          weather: weatherData.current,
+        }),
+      });
+      if (requestId !== requestIdRef.current || !result.generated_image_url) return;
+      setBackgroundImage(result.generated_image_url);
+      if (location.id) {
+        await fetchApi(`/saved-locations/${location.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ generated_image_url: result.generated_image_url }),
+        });
+        onBackgroundSaved?.(result.generated_image_url);
+      }
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  }, [location.id, onBackgroundSaved]);
 
   useEffect(() => {
     const requestId = requestIdRef.current + 1;
@@ -38,6 +63,9 @@ export function LocationWeatherDetail({ location, onBack }: LocationWeatherDetai
         if (requestId === requestIdRef.current) {
           setData(result);
         }
+        if (requestId === requestIdRef.current && !location.generated_image_url) {
+          void generateAndCacheBackground(result, requestId);
+        }
       } catch (err: unknown) {
         if (requestId === requestIdRef.current) {
           setError(getErrorMessage(err, "Failed to load weather details"));
@@ -50,7 +78,7 @@ export function LocationWeatherDetail({ location, onBack }: LocationWeatherDetai
     }
 
     void loadWeather();
-  }, [location.latitude, location.longitude]);
+  }, [generateAndCacheBackground, location.generated_image_url, location.latitude, location.longitude]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -66,26 +94,15 @@ export function LocationWeatherDetail({ location, onBack }: LocationWeatherDetai
       )}
 
       {isLoading && (
-        <div className="flex animate-pulse flex-col gap-4">
-          <div className="h-56 rounded-[32px] bg-white/10" />
-          <div className="h-72 rounded-[32px] bg-white/10" />
+        <div className="rounded-[32px] bg-black/20 p-6 text-center text-sm text-white/60">
+          Loading weather details...
         </div>
       )}
 
       {error && <div className="rounded-2xl border border-red-500/40 bg-red-500/20 p-4 text-sm text-red-100">{error}</div>}
 
       {data && (
-        <>
-          <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-black/20 p-5">
-            <CurrentWeather weather={data.current} location={data.location} />
-            <HourlyTimeline hourly={data.hourly} />
-          </section>
-          <WeatherInfoPanel
-            key={`${data.location.latitude},${data.location.longitude}`}
-            location={data.location}
-            initialForecast={data.daily}
-          />
-        </>
+        <WeatherDashboardView data={data} backgroundImage={backgroundImage} />
       )}
     </div>
   );

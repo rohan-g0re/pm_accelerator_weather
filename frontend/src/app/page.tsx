@@ -106,6 +106,7 @@ export default function Home() {
           lat: data.location.latitude,
           lon: data.location.longitude,
           tag: data.location.location_name.substring(0, 40) || "Saved Location",
+          generated_image_url: backgroundImage,
         }),
       });
       setToast({ tone: "success", message: "Saved to your library." });
@@ -127,11 +128,13 @@ export default function Home() {
         ? new URLSearchParams({ zip })
         : q
           ? new URLSearchParams({ q })
-          : new URLSearchParams({ q: "New York" });
+          : null;
 
-    window.setTimeout(() => {
-      fetchWeather(initialParams);
-    }, 0);
+    if (initialParams) {
+      window.setTimeout(() => {
+        fetchWeather(initialParams);
+      }, 0);
+    }
   }, [fetchWeather]);
 
   useEffect(() => {
@@ -180,15 +183,14 @@ export default function Home() {
         )}
 
         {isLoading && !data && (
-          <div className="animate-pulse flex flex-col gap-6">
-            <div className="h-32 bg-white/10 rounded-3xl w-full" />
-            <div className="h-40 bg-white/10 rounded-3xl w-full" />
+          <div className="rounded-[32px] bg-black/20 p-6 text-center text-sm text-white/60">
+            Loading forecast...
           </div>
         )}
 
         {data && (
           <section
-            className="relative overflow-hidden rounded-[32px] p-5 md:p-8 min-h-[520px] border border-white/10 bg-black/20"
+            className="relative min-h-[520px] overflow-hidden rounded-[32px] border border-white/10 bg-black/20 p-5 md:p-8"
             style={
               backgroundImage
                 ? {
@@ -207,6 +209,7 @@ export default function Home() {
             </div>
           </section>
         )}
+
       </div>
 
       {data ? (
