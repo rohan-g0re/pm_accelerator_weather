@@ -67,6 +67,8 @@ def test_weather_history_crud(client):
     assert read_response.json()["summary"] == "AI weather overview from OpenWeather for testing."
     assert read_response.json()["forecast"]["provider"] == "openweather_one_call_3"
     assert read_response.json()["forecast"]["alerts"][0]["event"] == "Heat advisory"
+    assert read_response.json()["date_range_weather"]["provider"] == "openweather_one_call_3_timemachine"
+    assert read_response.json()["date_range_weather"]["days"][0]["temperature"] == 21.5
 
     patch_response = client.patch(f"/weather/history/{history_id}", json={"note": "Updated note"})
     assert patch_response.status_code == 200
@@ -104,7 +106,7 @@ def test_exports_return_csv_and_pdf(client):
     assert "start_date" not in csv_response.text
     assert "end_date" not in csv_response.text
     assert "summary" not in csv_response.text
-    assert "2026-05-09,17.0 - 23.0,Clouds,scattered clouds,," in csv_response.text
+    assert "2026-05-09,21.5,Clouds,scattered clouds,65,3.4" in csv_response.text
 
     pdf_response = client.get(f"/exports/history/{history_id}.pdf")
     assert pdf_response.status_code == 200

@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
 import httpx
@@ -45,8 +45,30 @@ class WeatherService:
         return self._normalize_one_call(location, data)
 
     def date_range_weather(self, location: ResolvedLocation, start_date: date, end_date: date) -> dict[str, Any]:
-        one_call = self.one_call_weather(location, exclude=["minutely", "hourly", "alerts"])
-        return self.date_range_from_daily(one_call.daily, start_date, end_date)
+        days: list[dict[str, Any]] = []
+        current_date = start_date
+
+        while current_date <= end_date:
+            requested_at = datetime.combine(current_date, time.min, tzinfo=UTC)
+            data = self._get_openweather(
+                "https://api.openweathermap.org/data/3.0/onecall/timemachine",
+                {
+                    "lat": location.latitude,
+                    "lon": location.longitude,
+                    "dt": int(requested_at.timestamp()),
+                    "units": "metric",
+                },
+            )
+            days.extend(self._normalize_timemachine_data(data))
+            current_date += timedelta(days=1)
+
+        return {
+            "provider": "openweather_one_call_3_timemachine",
+            "supported": True,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "days": days,
+        }
 
     def weather_overview(self, location: ResolvedLocation, requested_date: date | None = None) -> str:
         params: dict[str, Any] = {
@@ -82,6 +104,34 @@ class WeatherService:
             "days": [],
             "message": "Requested date range is outside the available 8-day One Call daily forecast window.",
         }
+
+    def _normalize_timemachine_data(self, data: dict[str, Any]) -> list[dict[str, Any]]:
+        items = data.get("data", [])
+        if not isinstance(items, list):
+            return []
+
+        rows: list[dict[str, Any]] = []
+        for item in items:
+            if not isinstance(item, dict) or item.get("dt") is None:
+                continue
+            weather_item = (item.get("weather") or [{}])[0]
+            if not isinstance(weather_item, dict):
+                weather_item = {}
+            observed_at = datetime.fromtimestamp(int(item["dt"]), UTC)
+            rows.append(
+                {
+                    "date": observed_at.date().isoformat(),
+                    "timestamp": int(item["dt"]),
+                    "temperature": item.get("temp"),
+                    "feels_like": item.get("feels_like"),
+                    "condition": str(weather_item.get("main") or "Unknown"),
+                    "description": str(weather_item.get("description") or weather_item.get("main") or "weather"),
+                    "humidity": item.get("humidity"),
+                    "wind_speed": item.get("wind_speed"),
+                    "raw": item,
+                }
+            )
+        return rows
 
     def _get_openweather(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
         if not self.settings.openweather_api_key:

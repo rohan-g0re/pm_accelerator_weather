@@ -78,11 +78,11 @@ class ExportService:
             ]
         )
         lines.append("")
-        lines.append("5-day forecast:")
-        for day in self._forecast_days(history.forecast):
+        lines.append("Historical weather:")
+        for day in self._csv_days(history)[:24]:
             lines.append(
                 f"- {day.get('date')}: {day.get('description')} "
-                f"({day.get('low')}C to {day.get('high')}C)"
+                f"({self._temperature_value(day)}C, humidity {day.get('humidity', '')}%, wind {day.get('wind_speed', '')} m/s)"
             )
 
         for line in lines:
@@ -141,6 +141,13 @@ class ExportService:
         return days if isinstance(days, list) else []
 
     def _csv_days(self, history: WeatherHistory) -> list[dict[str, Any]]:
+        if isinstance(history.date_range_weather, dict):
+            days = history.date_range_weather.get("days", [])
+            if isinstance(days, list) and days:
+                return days
+            hourly = history.date_range_weather.get("hourly", [])
+            if isinstance(hourly, list) and hourly:
+                return hourly
         date_range_days = self._forecast_days(history.date_range_weather)
         if date_range_days:
             return date_range_days

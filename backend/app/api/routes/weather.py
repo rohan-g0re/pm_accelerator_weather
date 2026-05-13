@@ -102,7 +102,7 @@ def create_history(
     one_call = weather.one_call_weather(location)
     current = one_call.current
     forecast = ForecastResponse(location=location, days=one_call.daily[:5], raw=one_call.raw)
-    date_range = weather.date_range_from_daily(one_call.daily, payload.start_date, payload.end_date)
+    date_range = weather.date_range_weather(location, payload.start_date, payload.end_date)
     generated_image_url = images.generate_clipart(location, current)
     try:
         ai_summary = weather.weather_overview(location, payload.start_date)

@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { fetchApi, getErrorMessage } from "@/lib/api";
-import { ForecastDay, ResolvedLocation, WeatherHistoryRead, WeatherSummary } from "@/lib/types";
+import { ResolvedLocation, WeatherHistoryRead, WeatherSummary } from "@/lib/types";
 import { CurrentWeather } from "@/components/weather/CurrentWeather";
-import { WeatherInfoPanel } from "@/components/weather/WeatherInfoPanel";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Toast, ToastState } from "@/components/ui/Toast";
 import { format } from "date-fns";
@@ -49,11 +48,15 @@ export default function HistoryPage() {
     e.preventDefault();
     setError(null);
     setIsCreating(true);
+    const trimmedLocation = q.trim();
+    const locationPayload = /^\d{5}(?:-\d{4})?$/.test(trimmedLocation)
+      ? { zip: trimmedLocation }
+      : { q: trimmedLocation };
     try {
       await fetchApi("/weather/history", {
         method: "POST",
         body: JSON.stringify({
-          q,
+          ...locationPayload,
           start_date: startDate,
           end_date: endDate
         })
@@ -91,9 +94,6 @@ export default function HistoryPage() {
   const selectedRecord = history.find(h => h.id === selectedId);
   const mobileDetailRecord = history.find(h => h.id === mobileDetailId);
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-  const selectedForecast = selectedRecord ? extractForecastDays(selectedRecord.forecast) : [];
-  const mobileDetailForecast = mobileDetailRecord ? extractForecastDays(mobileDetailRecord.forecast) : [];
 
   const renderSearchAndList = (openMobileDetail: boolean) => (
     <div className="flex flex-col gap-6 min-w-0">
@@ -181,7 +181,6 @@ export default function HistoryPage() {
         {mobileDetailRecord ? (
           <HistoryRecordDetail
             record={mobileDetailRecord}
-            forecast={mobileDetailForecast}
             apiBase={API_BASE}
             onBack={() => setMobileDetailId(null)}
             onDelete={handleDelete}
@@ -197,7 +196,6 @@ export default function HistoryPage() {
           {selectedRecord ? (
             <HistoryRecordDetail
               record={selectedRecord}
-              forecast={selectedForecast}
               apiBase={API_BASE}
               onDelete={handleDelete}
             />
@@ -214,18 +212,18 @@ export default function HistoryPage() {
 
 function HistoryRecordDetail({
   record,
-  forecast,
   apiBase,
   onDelete,
   onBack,
 }: {
   record: WeatherHistoryRead;
-  forecast: ForecastDay[];
   apiBase: string;
   onDelete: (id: number) => void;
   onBack?: () => void;
 }) {
   const location = historyLocation(record);
+  const [activeTab, setActiveTab] = useState<"current" | "historical">("current");
+  const historicalRows = extractHistoricalRows(record.date_range_weather);
 
   return (
     <div className="flex flex-col gap-5">
@@ -256,35 +254,55 @@ function HistoryRecordDetail({
           </button>
         </div>
 
-        <section className="mb-6 rounded-[28px] border border-white/10 bg-black/20 p-5">
-          <CurrentWeather weather={historyWeather(record.current_weather)} location={location} />
-        </section>
+        <div className="mb-5 flex gap-2 rounded-full bg-white/5 p-1">
+          {(["current", "historical"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 rounded-full px-3 py-2 text-sm font-medium capitalize transition-colors ${
+                activeTab === tab ? "bg-[#D4FF00] text-black" : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-        <WeatherInfoPanel
-          key={record.id}
-          location={location}
-          tabs={["forecast", "nearby"]}
-          initialForecast={forecast}
-          initialSummary={record.summary}
-          className="bg-transparent p-0 backdrop-blur-none"
-        />
-      </div>
-
-      <div className="flex gap-4">
-        <a
-          href={`${apiBase}/exports/history/${record.id}.csv`}
-          download
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 py-3 text-sm font-medium text-white transition-colors hover:bg-white/20"
-        >
-          <Download className="h-4 w-4" /> CSV
-        </a>
-        <a
-          href={`${apiBase}/exports/history/${record.id}.pdf`}
-          download
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#D4FF00] py-3 text-sm font-medium text-black transition-colors hover:bg-[#bce600]"
-        >
-          <FileText className="h-4 w-4" /> PDF
-        </a>
+        {activeTab === "current" ? (
+          <section className="rounded-[28px] border border-white/10 bg-black/20 p-5">
+            <CurrentWeather weather={historyWeather(record.current_weather)} location={location} />
+          </section>
+        ) : (
+          <div className="flex flex-col gap-5">
+            <div className="rounded-[28px] border border-white/10 bg-black/20 p-5">
+              <p className="text-sm font-semibold text-[#D4FF00]">Download historical weather</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/70">
+                Exports use OpenWeather One Call timemachine data from {format(new Date(record.start_date), "MMM d, yyyy")} to{" "}
+                {format(new Date(record.end_date), "MMM d, yyyy")}.
+              </p>
+              <p className="mt-3 text-xs text-white/45">
+                {historicalRows.length ? `${historicalRows.length} historical records stored.` : "No historical rows were returned by the provider."}
+              </p>
+            </div>
+            <div className="flex gap-4">
+              <a
+                href={`${apiBase}/exports/history/${record.id}.csv`}
+                download
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 py-3 text-sm font-medium text-white transition-colors hover:bg-white/20"
+              >
+                <Download className="h-4 w-4" /> CSV
+              </a>
+              <a
+                href={`${apiBase}/exports/history/${record.id}.pdf`}
+                download
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#D4FF00] py-3 text-sm font-medium text-black transition-colors hover:bg-[#bce600]"
+              >
+                <FileText className="h-4 w-4" /> PDF
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -316,16 +334,10 @@ function historyWeather(currentWeather: Record<string, unknown>): WeatherSummary
   };
 }
 
-function extractForecastDays(forecast: Record<string, unknown>): ForecastDay[] {
-  const days = forecast.days;
-  if (!Array.isArray(days)) return [];
-  return days.filter(isForecastDay);
-}
-
-function isForecastDay(value: unknown): value is ForecastDay {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Partial<ForecastDay>;
-  return typeof item.date === "string" && typeof item.condition === "string" && typeof item.description === "string";
+function extractHistoricalRows(dateRangeWeather: Record<string, unknown>): Record<string, unknown>[] {
+  const rows = Array.isArray(dateRangeWeather.days) ? dateRangeWeather.days : dateRangeWeather.hourly;
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object");
 }
 
 function numberOrUndefined(value: unknown): number | undefined {

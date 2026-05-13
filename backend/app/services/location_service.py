@@ -37,9 +37,12 @@ class LocationService:
         return self._from_openweather_location(query.source_input, first)
 
     def _resolve_zip(self, query: LocationQuery) -> ResolvedLocation:
+        zip_value = query.zip
+        if zip_value and zip_value.isdigit() and "," not in zip_value:
+            zip_value = f"{zip_value},US"
         data = self._get_json(
             "https://api.openweathermap.org/geo/1.0/zip",
-            {"zip": query.zip, "appid": self.settings.openweather_api_key},
+            {"zip": zip_value, "appid": self.settings.openweather_api_key},
         )
         if not data or "lat" not in data or "lon" not in data:
             raise AppError("LOCATION_NOT_FOUND", "Could not find that ZIP or postal code.", status.HTTP_404_NOT_FOUND)

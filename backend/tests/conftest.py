@@ -120,9 +120,21 @@ class FakeWeatherService:
 
     def date_range_weather(self, location: ResolvedLocation, start_date: date, end_date: date) -> dict[str, Any]:
         return {
-            "provider": "fake",
+            "provider": "openweather_one_call_3_timemachine",
             "supported": True,
-            "days": [{"date": start_date.isoformat(), "high": 23.0, "low": 17.0}],
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "days": [
+                {
+                    "date": start_date.isoformat(),
+                    "timestamp": 1_778_544_000,
+                    "temperature": 21.5,
+                    "condition": "Clouds",
+                    "description": "scattered clouds",
+                    "humidity": 65,
+                    "wind_speed": 3.4,
+                }
+            ],
         }
 
     def date_range_from_daily(self, daily: list[ForecastDay], start_date: date, end_date: date) -> dict[str, Any]:
