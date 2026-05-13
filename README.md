@@ -1,10 +1,18 @@
+
 # Weather App
 
 Full-stack weather application with live weather, saved locations, history, AI Q&A, generated visual backgrounds, nearby places, and responsive web/mobile UI.
 
 ## Demo
 
-[Demo video link](https://example.com/demo-video-placeholder)
+Click the screenshot below to open the demo video, or use this link: [Demo video link](https://example.com/demo-video-placeholder).
+
+<p align="center">
+  <a href="https://example.com/demo-video-placeholder" title="Watch the demo video">
+    <img src="docs/image.png" alt="Weather Forecast dashboard — click to watch the demo video" width="900" />
+  </a>
+</p>
+
 
 ## Features
 

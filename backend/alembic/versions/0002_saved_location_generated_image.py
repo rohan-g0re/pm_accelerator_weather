@@ -1,13 +1,14 @@
 """add generated image to saved locations
 
-Revision ID: 0002_saved_location_generated_image
+Revision ID: 0002_saved_loc_gen_img
 Revises: 0001_initial
 Create Date: 2026-05-13
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0002_saved_location_generated_image"
+# Keep <= 32 chars: alembic_version.version_num defaults to VARCHAR(32).
+revision = "0002_saved_loc_gen_img"
 down_revision = "0001_initial"
 branch_labels = None
 depends_on = None
